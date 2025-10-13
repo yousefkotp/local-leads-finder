@@ -1,6 +1,8 @@
 """Google Maps provider using Decodo Scraper API."""
 from datetime import datetime
+import json
 import re
+from html import unescape
 from typing import Dict, Any, List, Optional, Set
 
 from bs4 import BeautifulSoup
@@ -52,6 +54,7 @@ class GoogleMapsProvider:
         businesses: List[Dict[str, Any]] = []
         seen_ids: Set[Any] = set()
         page = 1
+        detail_cache: Dict[str, Dict[str, Optional[str]]] = {}
 
         try:
             # Make API call
@@ -88,6 +91,13 @@ class GoogleMapsProvider:
                         break
 
                     parsed = self._parse_results_html(html, city, remaining, seen_ids)
+                    for business in parsed:
+                        self._enrich_business_details(
+                            business,
+                            domain=domain,
+                            locale=locale,
+                            cache=detail_cache,
+                        )
                     if parsed:
                         page_count += len(parsed)
                         businesses.extend(parsed)
@@ -259,6 +269,7 @@ class GoogleMapsProvider:
             "name": name,
             "category": category,
             "phone": None,
+            "email": None,
             "website": maps_url,
             "rating": rating,
             "reviews_count": reviews_count,
@@ -273,4 +284,130 @@ class GoogleMapsProvider:
             "status": status,
             "review_snippet": review_snippet,
             "google_cid": cid,
+            "google_maps_url": maps_url,
         }
+
+    def _enrich_business_details(
+        self,
+        business: Dict[str, Any],
+        domain: str,
+        locale: str,
+        cache: Dict[str, Dict[str, Optional[str]]],
+    ) -> None:
+        """Fetch additional contact details (phone/email/website) for a business."""
+        cid = business.get("google_cid")
+        if not cid:
+            return
+
+        cached = cache.get(cid)
+        if cached is None:
+            try:
+                response = self.session.google_maps_place_details(
+                    cid=cid,
+                    domain=domain,
+                    locale=locale,
+                )
+                html = None
+                for result in response.get("results", []):
+                    content = result.get("content")
+                    if content:
+                        html = content
+                        break
+                cached = self._extract_contact_details(html)
+            except Exception as exc:
+                print(f"Google Maps: Failed to enrich CID {cid}: {exc}")
+                cached = {}
+            cache[cid] = cached
+
+        if not cached:
+            return
+
+        phone = cached.get("phone")
+        if phone:
+            business["phone"] = phone
+
+        website = cached.get("website")
+        if website:
+            business["website"] = website
+
+        email = cached.get("email")
+        if email:
+            business["email"] = email
+
+    def _extract_contact_details(self, html: Optional[str]) -> Dict[str, Optional[str]]:
+        """Parse phone, email, and website from a Google Maps place HTML page."""
+        details: Dict[str, Optional[str]] = {
+            "phone": None,
+            "email": None,
+            "website": None,
+        }
+
+        if not html:
+            return details
+
+        try:
+            init_match = re.search(
+                r"APP_INITIALIZATION_STATE=(.*?);window\.APP_FLAGS", html
+            )
+            if init_match:
+                state = json.loads(init_match.group(1))
+                blob = None
+                if isinstance(state, list) and len(state) > 3:
+                    section = state[3]
+                    if isinstance(section, list) and len(section) > 6:
+                        blob = section[6]
+                if isinstance(blob, str) and blob.startswith(")]}'"):
+                    place_data = json.loads(blob[4:])
+                    if (
+                        isinstance(place_data, list)
+                        and len(place_data) > 6
+                        and isinstance(place_data[6], list)
+                    ):
+                        for entry in place_data[6]:
+                            if not isinstance(entry, list):
+                                continue
+
+                            if len(entry) > 5 and isinstance(entry[5], list):
+                                tel_meta = entry[5][0] if entry[5] else None
+                                if (
+                                    isinstance(tel_meta, str)
+                                    and tel_meta.startswith("tel:")
+                                ):
+                                    pretty = (
+                                        entry[0]
+                                        if entry and isinstance(entry[0], str)
+                                        else tel_meta.split(":", 1)[-1]
+                                    )
+                                    details["phone"] = (
+                                        pretty.replace("\u202a", "")
+                                        .replace("\u202c", "")
+                                        .strip()
+                                    )
+
+                            if entry and isinstance(entry[0], str):
+                                candidate = unescape(entry[0])
+                                if candidate.startswith("http"):
+                                    lowered = candidate.lower()
+                                    if "google.com/maps" in lowered:
+                                        continue
+                                    if lowered.startswith("https://maps.app.goo.gl"):
+                                        continue
+                                    if not details["website"]:
+                                        details["website"] = candidate
+        except Exception:
+            pass
+
+        if not details["phone"]:
+            tel_match = re.search(r"tel:\+?[0-9][0-9\s().-]{6,}", html)
+            if tel_match:
+                details["phone"] = tel_match.group(0).split(":", 1)[-1].strip()
+
+        email_match = re.search(
+            r"mailto:([A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})",
+            html,
+            re.IGNORECASE,
+        )
+        if email_match:
+            details["email"] = email_match.group(1)
+
+        return details
