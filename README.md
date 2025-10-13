@@ -1,22 +1,42 @@
 # Local Leads Finder
 
-**Fast, scalable local business lead generation powered by [Decodo](https://decodo.io) Web Scraping API.**
+**Fast, scalable local business lead generation powered by [Decodo](https://visit.decodo.com/RGrYdR) Web Scraping API.**
 
-Turn a simple keyword and city into a ready-to-use dataset of local businesses from Google Maps. Perfect for freelancers, agencies, and SMBs who need quality leads at scale.
+Turn a simple keyword and location into a ready-to-use dataset of local businesses from Google Maps. Perfect for freelancers, agencies, and SMBs who need quality leads at scale.
 
-## Features
+## Table of Contents
 
-- **Simple CLI**: One command to collect hundreds of local business leads
-- **Web Interface**: Modern, intuitive web dashboard with real-time progress tracking
-- **Google Maps**: Native Google Maps support with automatic parsing
-- **Clean output**: Deduplicated CSV with name, phone, website, rating, address
-- **Rate limiting**: Built-in request throttling
-- **Geo-targeting**: Target specific cities and countries
-- **Docker ready**: Run anywhere with Docker
+- [Quick Start](#quick-start)
+  - [Option 1: Use the hosted web app (recommended)](#option-1-use-the-hosted-web-app-recommended)
+  - [Option 2: Run locally](#option-2-run-locally)
+    - [Step 1: Installation](#step-1-installation)
+    - [Step 2: Get Decodo credentials](#step-2-get-decodo-credentials)
+    - [Step 3: Configure environment (CLI only)](#step-3-configure-environment-cli-only)
+    - [Step 4: Start collecting leads](#step-4-start-collecting-leads)
+- [Usage](#usage)
+  - [Web Interface](#web-interface)
+  - [Command Line Interface](#command-line-interface)
+- [Output Format](#output-format)
+- [Docker Usage](#docker-usage)
+  - [Build the image](#build-the-image)
+  - [Run the CLI inside Docker](#run-the-cli-inside-docker)
+  - [Run the web interface inside Docker](#run-the-web-interface-inside-docker)
+  - [API Request Example](#api-request-example)
+- [Future Features](#future-features)
+- [Contributing](#contributing)
+- [Author](#author)
 
 ## Quick Start
 
-### 1. Installation
+### Option 1: Use the hosted web app (recommended)
+
+- Visit [Local Leads Finder](https://local-leads-finder.com) website to use Local Leads Finder instantly.
+- Enter your Decodo username and password directly in the UI when prompted.
+- Start a search and download results without any local setup.
+
+### Option 2: Run locally
+
+#### Step 1: Installation
 
 ```bash
 # Clone the repository
@@ -30,14 +50,18 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-### 2. Get Decodo Credentials
+#### Step 2: Get Decodo credentials
 
-Get your Scraper API credentials from [Decodo Dashboard](https://decodo.io/dashboard):
+Get your Scraper API credentials from [Decodo Dashboard](https://visit.decodo.com/RGrYdR):
 
 1. Navigate to **"Scraper"** tab
 2. Find your **username** and **password**
 
-### 3. Configure Environment
+#### Step 3: Configure environment (CLI only)
+
+**Note:** The web interface has its own credential management - users enter credentials directly in the UI.
+
+For CLI usage, create a `.env` file:
 
 ```bash
 # Create .env file
@@ -46,38 +70,18 @@ cp .env.example .env
 # Add your credentials
 echo "DECODO_USERNAME=your_username" >> .env
 echo "DECODO_PASSWORD=your_password" >> .env
-echo "DECODO_KEY=your_key" >> .env
 ```
 
-### 4. Test Connection
+#### Step 4: Start collecting leads
 
-```bash
-python test_connection.py
-```
-
-Expected output:
-```
-SUCCESS!
-Found 5 businesses:
-
-1. Toronto Dental Office
-   Address: 123 Main St, Toronto, ON
-   Rating: 4.5
-   Phone: (416) 555-0123
-
-Google Maps Scraper API is working!
-```
-
-### 5. Start Collecting Leads
-
-**Option A: Web Interface (Recommended)**
+**Option A: Web Interface**
 
 ```bash
 cd webapp
-./run.sh
+python app.py
 ```
 
-Then open your browser to `http://localhost:5000` for the beautiful web interface!
+Check the terminal output for the exact URL (default is `http://localhost:5000`, but another free port may be used) and open it in your browser.
 
 **Option B: Command Line**
 
@@ -94,15 +98,16 @@ The web interface provides a modern, user-friendly way to find leads:
 1. **Start the web server:**
    ```bash
    cd webapp
-   ./run.sh
+   python app.py
    ```
 
-2. **Open your browser** to `http://localhost:5000`
+2. **Open your browser** to the URL printed in the terminal (defaults to `http://localhost:5000`, but may vary if that port is in use)
 
 3. **Fill in the search form:**
    - Business Type (e.g., "dentist", "pizza restaurant")
+   - Location with a given radius to look around
    - City (e.g., "Toronto", "New York")
-   - Results Limit (1-500)
+   - Results Limit (1-1000)
    - Country (optional)
 
 4. **Watch real-time progress** as leads are collected
@@ -110,8 +115,6 @@ The web interface provides a modern, user-friendly way to find leads:
 5. **View results** in an interactive table
 
 6. **Export to CSV or JSON** with one click
-
-See [webapp/README.md](webapp/README.md) for more details on the web interface.
 
 ### Command Line Interface
 
@@ -179,14 +182,6 @@ CSV file with the following columns:
 | `source` | Data source (Google Maps) |
 | `scraped_at` | ISO timestamp |
 
-## How It Works
-
-1. **API Call**: Makes requests to Decodo's Web Scraping API with Google Maps target
-2. **Geo-Targeting**: Routes requests through the specified city for accurate local results
-3. **Parsing**: Decodo automatically parses Google Maps data into structured JSON
-4. **Deduplication**: Removes duplicate businesses using fuzzy matching
-5. **Export**: Saves clean CSV/JSON with standardized business information
-
 ## Docker Usage
 
 ### Build the image
@@ -195,27 +190,29 @@ CSV file with the following columns:
 docker build -t leads-finder .
 ```
 
-### Run with Docker
+### Run the CLI inside Docker
 
 ```bash
 docker run --rm \
   -e DECODO_USERNAME=your_username \
   -e DECODO_PASSWORD=your_password \
-  -e DECODO_KEY=your_key \
-  -v $(pwd)/output:/out \
+  -v "$(pwd)/output:/out" \
   leads-finder \
   --query "dentist" --city "Toronto" --out /out/leads.csv
 ```
 
-## Decodo Integration
+### Run the web interface inside Docker
 
-This tool uses **Decodo's Web Scraping API** for:
+```bash
+docker run --rm \
+  -p 5000:5000 \
+  -e DECODO_USERNAME=your_username \
+  -e DECODO_PASSWORD=your_password \
+  leads-finder \
+  web
+```
 
-- **Google Maps Support**: Native API integration with automatic parsing
-- **Geo-targeting**: Get results specific to target cities
-- **Anti-bot Protection**: Decodo handles CAPTCHAs and blocks
-- **Reliability**: Built-in retries and error handling
-- **Scale**: Handle hundreds of requests with ease
+Open your browser to `http://localhost:5000`. To use a different port, change the mapping (`-p 8080:8080`) and set `-e PORT=8080`.
 
 ### API Request Example
 
@@ -231,43 +228,11 @@ results = session.google_maps_search(
 businesses = results.get("results", [])
 ```
 
-## Project Structure
+## Future Features
 
-```
-local-leads-finder/
-├── leads_finder/
-│   ├── core/
-│   │   ├── cli.py                    # Command-line interface
-│   │   ├── scraper_api_session.py    # Decodo API wrapper
-│   │   ├── dedupe.py                 # Deduplication logic
-│   │   ├── export.py                 # CSV/JSON export
-│   │   └── parser.py                 # Data parsing utilities
-│   └── providers/
-│       └── google_maps.py            # Google Maps provider
-├── webapp/                           # Web interface
-│   ├── app.py                        # Flask backend
-│   ├── templates/                    # HTML templates
-│   ├── static/                       # CSS, JavaScript
-│   ├── run.sh                        # Startup script
-│   └── README.md                     # Web app docs
-├── test_connection.py                # Connection test script
-├── requirements.txt                  # Python dependencies
-├── setup.py                          # Package installer
-├── Dockerfile                        # Docker container
-└── README.md                         # This file
-```
-
-## Roadmap
-
-### Phase 2: Enrichment
-- [ ] Email finding from websites
 - [ ] Social media profiles
-- [ ] Business hours and amenities
-
-### Phase 3: UI & Automation
-- [x] Web dashboard
+- [ ] Business hours
 - [ ] Scheduled scraping
-- [x] API endpoint for integrations
 
 ## Contributing
 
