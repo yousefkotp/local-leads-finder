@@ -109,7 +109,9 @@ class SearchProgress:
         self.completed = True
 
 
-def perform_search(search_id: str, query: str, city: str, limit: int, country: str = None, enrich: bool = True):
+def perform_search(search_id: str, query: str, city: str, limit: int, country: str = None, enrich: bool = True,
+                   latitude: float = None, longitude: float = None, radius_km: float = None,
+                   username: str = None, password: str = None):
     """
     Perform the actual search in a background thread.
     """
@@ -121,19 +123,33 @@ def perform_search(search_id: str, query: str, city: str, limit: int, country: s
         time.sleep(0.5)  # Brief pause for UX
 
         session = ScraperAPISession(
-            username=os.getenv("DECODO_USERNAME"),
-            password=os.getenv("DECODO_PASSWORD"),
+            username=username,
+            password=password,
             rps=1.0
         )
 
         # Initialize provider
-        progress.update("searching", 30, f"Searching Google Maps for '{query}' in {city}...")
         provider = GoogleMapsProvider(session)
+
+        # Determine search type and message
+        if latitude is not None and longitude is not None:
+            location_str = f"({latitude:.4f}, {longitude:.4f})"
+            if radius_km:
+                location_str += f" within {radius_km}km"
+            progress.update("searching", 30, f"Searching for '{query}' near {location_str}...")
+        else:
+            progress.update("searching", 30, f"Searching Google Maps for '{query}' in {city}...")
 
         # Perform search
         enrich_msg = " with enrichment" if enrich else ""
-        progress.update("searching", 30, f"Searching Google Maps for '{query}' in {city}{enrich_msg}...")
-        businesses = provider.search(query, city, limit, country=country, enrich=enrich)
+        businesses = provider.search(
+            query, city, limit,
+            country=country,
+            enrich=enrich,
+            latitude=latitude,
+            longitude=longitude,
+            radius_km=radius_km
+        )
         progress.total_found = len(businesses)
 
         # Deduplicate
@@ -161,6 +177,13 @@ def start_search():
     if not request.is_json:
         return jsonify({'error': 'Request must be JSON'}), 400
 
+    # Get credentials from headers
+    username = request.headers.get('X-Decodo-Username')
+    password = request.headers.get('X-Decodo-Password')
+
+    if not username or not password:
+        return jsonify({'error': 'Missing API credentials. Please configure your Decodo credentials.'}), 401
+
     try:
         data = request.get_json()
     except Exception as e:
@@ -176,14 +199,44 @@ def start_search():
         limit = int(data.get('limit', 100))
         country = (data.get('country') or '').strip() or None
         enrich = data.get('enrich', True)  # Default to True (enrichment enabled)
+
+        # Location-based search parameters
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        radius_km = data.get('radius_km')
+
+        # Convert to proper types if provided
+        if latitude is not None:
+            latitude = float(latitude)
+        if longitude is not None:
+            longitude = float(longitude)
+        if radius_km is not None:
+            radius_km = float(radius_km)
+
     except (ValueError, TypeError, AttributeError) as e:
         return jsonify({'error': f'Invalid input data: {str(e)}'}), 400
 
-    if not query or not city:
-        return jsonify({'error': 'Query and city are required'}), 400
+    # Validate required fields based on search mode
+    use_location = latitude is not None and longitude is not None
 
-    if limit < 1 or limit > 500:
-        return jsonify({'error': 'Limit must be between 1 and 500'}), 400
+    if not query:
+        return jsonify({'error': 'Business type (query) is required'}), 400
+
+    if use_location:
+        # Location-based search
+        if radius_km is None or radius_km <= 0:
+            return jsonify({'error': 'Radius must be specified for location-based search'}), 400
+        if not (-90 <= latitude <= 90):
+            return jsonify({'error': 'Latitude must be between -90 and 90'}), 400
+        if not (-180 <= longitude <= 180):
+            return jsonify({'error': 'Longitude must be between -180 and 180'}), 400
+    else:
+        # City-based search
+        if not city:
+            return jsonify({'error': 'City is required for city-based search'}), 400
+
+    if limit < 1 or limit > 1000:
+        return jsonify({'error': 'Limit must be between 1 and 1000'}), 400
 
     # Generate search ID
     search_id = f"{int(time.time())}_{query}_{city}".replace(' ', '_')
@@ -195,7 +248,7 @@ def start_search():
     # Start search in background thread
     thread = threading.Thread(
         target=perform_search,
-        args=(search_id, query, city, limit, country, enrich)
+        args=(search_id, query, city, limit, country, enrich, latitude, longitude, radius_km, username, password)
     )
     thread.daemon = True
     thread.start()

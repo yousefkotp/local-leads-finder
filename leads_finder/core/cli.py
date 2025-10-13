@@ -36,6 +36,25 @@ PROVIDERS = {
     help="Target city name (e.g., 'Toronto', 'Vancouver')",
 )
 @click.option(
+    "--latitude",
+    type=float,
+    default=None,
+    help="Latitude for radius-based searches (requires --longitude and --radius-km)",
+)
+@click.option(
+    "--longitude",
+    type=float,
+    default=None,
+    help="Longitude for radius-based searches (requires --latitude and --radius-km)",
+)
+@click.option(
+    "--radius-km",
+    "radius_km",
+    type=float,
+    default=None,
+    help="Search radius in kilometers from the provided coordinates",
+)
+@click.option(
     "--providers",
     default="google",
     help="Comma-separated list of providers (google, googlemaps, gmaps)",
@@ -77,7 +96,21 @@ PROVIDERS = {
     default=True,
     help="Fetch detailed contact info (phone, email, website) for each business (default: enabled)",
 )
-def main(query: str, city: str, providers: str, limit: int, out: str, rps: float, country: str, username: str, password: str, enrich: bool):
+def main(
+    query: str,
+    city: str,
+    latitude: float,
+    longitude: float,
+    radius_km: float,
+    providers: str,
+    limit: int,
+    out: str,
+    rps: float,
+    country: str,
+    username: str,
+    password: str,
+    enrich: bool,
+):
     """
     Local Leads Finder - Collect local business leads using Decodo Scraper API.
 
@@ -88,6 +121,36 @@ def main(query: str, city: str, providers: str, limit: int, out: str, rps: float
     print(f"📍 Providers: {providers}")
     print(f"🎯 Limit: {limit} per provider")
     print(f"📊 Enrichment: {'Enabled' if enrich else 'Disabled'}")
+
+    use_radius = any(value is not None for value in (latitude, longitude, radius_km))
+
+    if use_radius:
+        missing = [
+            flag
+            for flag, value in {
+                "--latitude": latitude,
+                "--longitude": longitude,
+                "--radius-km": radius_km,
+            }.items()
+            if value is None
+        ]
+        if missing:
+            print(f"❌ Radius search requires all coordinate options. Missing: {', '.join(missing)}")
+            sys.exit(1)
+
+        if not (-90.0 <= latitude <= 90.0):
+            print("❌ Latitude must be between -90 and 90 degrees")
+            sys.exit(1)
+
+        if not (-180.0 <= longitude <= 180.0):
+            print("❌ Longitude must be between -180 and 180 degrees")
+            sys.exit(1)
+
+        if radius_km is None or radius_km <= 0:
+            print("❌ Radius must be a positive number (kilometers)")
+            sys.exit(1)
+
+        print(f"📏 Radius: {radius_km:.2f} km around ({latitude:.6f}, {longitude:.6f})")
 
     # Parse providers
     provider_list = [p.strip().lower() for p in providers.split(",")]
@@ -120,7 +183,16 @@ def main(query: str, city: str, providers: str, limit: int, out: str, rps: float
         try:
             provider_class = PROVIDERS[provider_name]
             provider = provider_class(session)
-            businesses = provider.search(query, city, limit, country=country, enrich=enrich)
+            businesses = provider.search(
+                query,
+                city,
+                limit,
+                country=country,
+                enrich=enrich,
+                latitude=latitude if use_radius else None,
+                longitude=longitude if use_radius else None,
+                radius_km=radius_km if use_radius else None,
+            )
             all_businesses.extend(businesses)
         except Exception as e:
             print(f"❌ Error with {provider_name}: {e}")

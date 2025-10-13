@@ -36,7 +36,17 @@ class GoogleMapsProvider:
         """
         self.session = session
 
-    def search(self, query: str, city: str, limit: int = 100, country: str = None, enrich: bool = True) -> List[Dict[str, Any]]:
+    def search(
+        self,
+        query: str,
+        city: str,
+        limit: int = 100,
+        country: str = None,
+        enrich: bool = True,
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None,
+        radius_km: Optional[float] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Search for businesses on Google Maps.
 
@@ -46,6 +56,9 @@ class GoogleMapsProvider:
             limit: Maximum number of results
             country: Optional country code (e.g., "US", "CA")
             enrich: If True, fetch additional contact details (phone, email, website) for each business
+            latitude: Optional latitude for radius-based searches
+            longitude: Optional longitude for radius-based searches
+            radius_km: Optional radius in kilometers for radius-based searches
 
         Returns:
             List of business dictionaries
@@ -57,18 +70,22 @@ class GoogleMapsProvider:
         seen_ids: Set[Any] = set()
         page = 1
         detail_cache: Dict[str, Dict[str, Optional[str]]] = {}
+        use_radius = latitude is not None and longitude is not None
 
         try:
             # Make API call
             print(f"Google Maps: Searching for '{query}' in {city}...")
 
-            geo = self._build_geo(city, country)
+            geo = self._build_geo(city, country, latitude, longitude, radius_km)
             locale = self._derive_locale(country)
             domain = self._derive_domain(country)
+            search_query = query.strip()
+            if city and not use_radius:
+                search_query = f"{query} {city}".strip()
 
             while len(businesses) < limit:
                 response = self.session.google_maps_search(
-                    query=f"{query} {city}",
+                    query=search_query,
                     geo=geo,
                     limit=limit,
                     locale=locale,
@@ -136,12 +153,37 @@ class GoogleMapsProvider:
 
         return None
 
-    def _build_geo(self, city: str, country: Optional[str]) -> str:
+    def _build_geo(
+        self,
+        city: str,
+        country: Optional[str],
+        latitude: Optional[float],
+        longitude: Optional[float],
+        radius_km: Optional[float],
+    ) -> Optional[str]:
+        if latitude is not None and longitude is not None:
+            parts = [
+                f"lat: {latitude:.6f}",
+                f"lng: {longitude:.6f}",
+            ]
+            if radius_km is not None and radius_km > 0:
+                radius_meters = max(int(round(radius_km * 1000)), 1)
+                parts.append(f"rad: {radius_meters}")
+            return ", ".join(parts)
+
+        if city:
+            city = city.strip()
+        else:
+            city = ""
+
         code = self._match_country_code(country)
         if code and code in COUNTRY_SETTINGS:
             country_name = COUNTRY_SETTINGS[code]["name"]
-            return f"{city}, {country_name}"
-        return city
+            if city:
+                return f"{city}, {country_name}"
+            return country_name
+
+        return city or country
 
     def _derive_locale(self, country: Optional[str]) -> str:
         code = self._match_country_code(country)

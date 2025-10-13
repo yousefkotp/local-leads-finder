@@ -8,6 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 </head>
 <body>
     <div class="container">
@@ -32,58 +36,119 @@
             <div class="card search-card">
                 <h2 class="card-title">Search for Leads</h2>
                 <form id="searchForm" class="search-form">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="query">Business Type</label>
-                            <input
-                                type="text"
-                                id="query"
-                                name="query"
-                                placeholder="e.g., dentist, pizza restaurant, plumber"
-                                required
-                            >
-                            <small>What type of business are you looking for?</small>
+                    <!-- Business Type -->
+                    <div class="form-group">
+                        <label for="query">Business Type</label>
+                        <input
+                            type="text"
+                            id="query"
+                            name="query"
+                            placeholder="e.g., dentist, pizza restaurant, plumber"
+                            required
+                        >
+                        <small>What type of business are you looking for?</small>
+                    </div>
+
+                    <!-- Location Mode Toggle -->
+                    <div class="location-mode-toggle">
+                        <label class="toggle-option">
+                            <input type="radio" name="locationMode" value="map" checked>
+                            <span class="toggle-label">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M10 2C7.24 2 5 4.24 5 7C5 10.5 10 16 10 16C10 16 15 10.5 15 7C15 4.24 12.76 2 10 2ZM10 8.5C9.17 8.5 8.5 7.83 8.5 7C8.5 6.17 9.17 5.5 10 5.5C10.83 5.5 11.5 6.17 11.5 7C11.5 7.83 10.83 8.5 10 8.5Z" fill="currentColor"/>
+                                </svg>
+                                Pick Location & Radius
+                            </span>
+                        </label>
+                        <label class="toggle-option">
+                            <input type="radio" name="locationMode" value="city">
+                            <span class="toggle-label">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M10 3L2 7L10 11L18 7L10 3Z" fill="currentColor"/>
+                                    <path d="M10 11V17M10 17L14 15V9M10 17L6 15V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                Search by City
+                            </span>
+                        </label>
+                    </div>
+
+                    <!-- Map Location Mode -->
+                    <div id="mapModeSection" class="location-section">
+                        <div class="map-container-wrapper">
+                            <div id="map" class="map-display"></div>
+                            <div class="map-instructions">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/>
+                                </svg>
+                                <span>Click on the map to set your search location</span>
+                            </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="city">City</label>
+                        <div class="radius-control">
+                            <label for="radius">Search Radius: <span id="radiusValue">5.0</span> km</label>
                             <input
-                                type="text"
-                                id="city"
-                                name="city"
-                                placeholder="e.g., Toronto, New York, London"
-                                required
+                                type="range"
+                                id="radius"
+                                name="radius"
+                                min="0.5"
+                                max="50"
+                                step="0.5"
+                                value="5"
+                                class="radius-slider"
                             >
-                            <small>Target city for your search</small>
+                            <div class="radius-labels">
+                                <span>0.5 km</span>
+                                <span>50 km</span>
+                            </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="limit">Results Limit</label>
-                            <input
-                                type="number"
-                                id="limit"
-                                name="limit"
-                                value="100"
-                                min="1"
-                                max="500"
-                                required
-                            >
-                            <small>Maximum number of leads (1-500)</small>
-                        </div>
+                        <input type="hidden" id="latitude" name="latitude">
+                        <input type="hidden" id="longitude" name="longitude">
+                    </div>
 
-                        <div class="form-group">
-                            <label for="country">Country (Optional)</label>
-                            <select id="country" name="country">
-                                <option value="">Auto-detect</option>
-                                <option value="US">United States</option>
-                                <option value="CA">Canada</option>
-                                <option value="GB">United Kingdom</option>
-                                <option value="AU">Australia</option>
-                                <option value="NZ">New Zealand</option>
-                                <option value="IE">Ireland</option>
-                            </select>
-                            <small>Specify country for better results</small>
+                    <!-- City Mode -->
+                    <div id="cityModeSection" class="location-section" style="display: none;">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="city">City</label>
+                                <input
+                                    type="text"
+                                    id="city"
+                                    name="city"
+                                    placeholder="e.g., Toronto, New York, London"
+                                >
+                                <small>Target city for your search</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="country">Country (Optional)</label>
+                                <select id="country" name="country">
+                                    <option value="">Auto-detect</option>
+                                    <option value="US">United States</option>
+                                    <option value="CA">Canada</option>
+                                    <option value="GB">United Kingdom</option>
+                                    <option value="AU">Australia</option>
+                                    <option value="NZ">New Zealand</option>
+                                    <option value="IE">Ireland</option>
+                                </select>
+                                <small>Specify country for better results</small>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- Common Options (visible for both modes) -->
+                    <div class="form-group">
+                        <label for="limit">Results Limit</label>
+                        <input
+                            type="number"
+                            id="limit"
+                            name="limit"
+                            value="100"
+                            min="1"
+                            max="1000"
+                            required
+                        >
+                        <small>Maximum number of leads (1-1000)</small>
                     </div>
 
                     <div class="form-group-checkbox">
@@ -214,9 +279,148 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>Powered by <a href="https://decodo.io" target="_blank">Decodo</a> Web Scraping API</p>
+            <p>Powered by <a href="https://visit.decodo.com/RGrYdR" target="_blank">Decodo</a> Web Scraping API</p>
+            <p class="footer-author">Created by <a href="https://github.com/yousefkotp" target="_blank">Yousef Kotp</a></p>
         </footer>
     </div>
+
+    <!-- Credentials Modal -->
+    <div id="credentialsModal" class="modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Decodo API Credentials</h2>
+                <p class="modal-subtitle">Enter your Decodo API credentials to start searching</p>
+            </div>
+
+            <div class="modal-body">
+                <!-- Credentials Form -->
+                <div id="credentialsForm">
+                    <div class="form-group">
+                        <label for="decodUsername">API Username</label>
+                        <input
+                            type="text"
+                            id="decodUsername"
+                            placeholder="Enter your Decodo username"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="decodPassword">API Password</label>
+                        <input
+                            type="password"
+                            id="decodPassword"
+                            placeholder="Enter your Decodo password"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="credentials-info">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10 0C4.477 0 0 4.477 0 10s4.477 10 10 10 10-4.477 10-10S15.523 0 10 0zm1 15H9v-2h2v2zm0-4H9V5h2v6z" fill="currentColor"/>
+                        </svg>
+                        <span>Your credentials are stored locally in your browser and expire after 30 days.</span>
+                    </div>
+
+                    <button class="btn btn-link" id="showTutorialBtn">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10 0C4.477 0 0 4.477 0 10s4.477 10 10 10 10-4.477 10-10S15.523 0 10 0zm1 15H9v-2h2v2zm0-4H9V5h2v6z" fill="currentColor"/>
+                        </svg>
+                        How to get Decodo API credentials?
+                    </button>
+
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" id="saveCredentialsBtn">Save Credentials</button>
+                    </div>
+                </div>
+
+                <!-- Tutorial Steps -->
+                <div id="tutorialSteps" style="display: none;">
+                    <div class="tutorial-container">
+                        <div class="tutorial-step" id="step1">
+                            <div class="step-number">Step 1 of 6</div>
+                            <h3>Visit Decodo Website</h3>
+                            <img src="{{ url_for('static', filename='images/decodo_steps/1.png') }}" alt="Decodo Landing Page">
+                            <p>Click the button below to visit Decodo and sign up for an account</p>
+                            <a href="https://visit.decodo.com/RGrYdR" target="_blank" rel="noopener" class="btn btn-primary tutorial-cta">
+                                Go to Decodo
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </a>
+                        </div>
+
+                        <div class="tutorial-step" id="step2" style="display: none;">
+                            <div class="step-number">Step 2 of 6</div>
+                            <h3>Create Your Account</h3>
+                            <img src="{{ url_for('static', filename='images/decodo_steps/2.png') }}" alt="Sign Up">
+                            <p>Fill in your details to create a new account</p>
+                        </div>
+
+                        <div class="tutorial-step" id="step3" style="display: none;">
+                            <div class="step-number">Step 3 of 6</div>
+                            <h3>Navigate to Pricing</h3>
+                            <img src="{{ url_for('static', filename='images/decodo_steps/3.png') }}" alt="Pricing Page">
+                            <p>Click "Pricing" under "Scraping APIs"</p>
+                        </div>
+
+                        <div class="tutorial-step" id="step4" style="display: none;">
+                            <div class="step-number">Step 4 of 6</div>
+                            <h3>Choose Your Plan</h3>
+                            <img src="{{ url_for('static', filename='images/decodo_steps/4.png') }}" alt="Select Plan">
+                            <p>Select a plan that fits your needs (Free trial available)</p>
+                        </div>
+
+                        <div class="tutorial-step" id="step5" style="display: none;">
+                            <div class="step-number">Step 5 of 6</div>
+                            <h3>Access Web Advanced API</h3>
+                            <img src="{{ url_for('static', filename='images/decodo_steps/5.png') }}" alt="Dashboard">
+                            <p>In your dashboard, click "Web Advanced" under Scraping APIs</p>
+                        </div>
+
+                        <div class="tutorial-step" id="step6" style="display: none;">
+                            <div class="step-number">Step 6 of 6</div>
+                            <h3>Copy Your Credentials</h3>
+                            <img src="{{ url_for('static', filename='images/decodo_steps/6.png') }}" alt="Credentials">
+                            <p>Copy your username and password from the Authentication section</p>
+                        </div>
+                    </div>
+
+                    <div class="tutorial-navigation">
+                        <button class="btn btn-secondary" id="tutorialPrevBtn" disabled>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Previous
+                        </button>
+                        <div class="tutorial-dots" id="tutorialDots">
+                            <span class="dot active"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                        </div>
+                        <button class="btn btn-secondary" id="tutorialNextBtn">
+                            Next
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" id="backToFormBtn">Back to Credentials Form</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

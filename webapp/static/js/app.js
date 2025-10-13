@@ -7,6 +7,13 @@ let progressInterval = null;
 let allResults = [];
 let currentPage = 1;
 let pageSize = 25;
+let currentEnrichState = true; // Track enrichment state
+
+// Map state
+let map = null;
+let marker = null;
+let radiusCircle = null;
+let selectedLocation = null;
 
 // DOM Elements
 const searchForm = document.getElementById('searchForm');
@@ -41,9 +48,137 @@ const totalResultsSpan = document.getElementById('totalResults');
 // API Base URL
 const API_BASE = '';
 
+// Credentials Management
+const CREDENTIALS_KEY = 'decodo_credentials';
+const CREDENTIALS_EXPIRY_DAYS = 30;
+
+function getCredentials() {
+    const stored = localStorage.getItem(CREDENTIALS_KEY);
+    if (!stored) return null;
+
+    try {
+        const credentials = JSON.parse(stored);
+        const expiryDate = new Date(credentials.expiry);
+
+        // Check if expired
+        if (new Date() > expiryDate) {
+            localStorage.removeItem(CREDENTIALS_KEY);
+            return null;
+        }
+
+        return credentials;
+    } catch (e) {
+        localStorage.removeItem(CREDENTIALS_KEY);
+        return null;
+    }
+}
+
+function saveCredentials(username, password) {
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + CREDENTIALS_EXPIRY_DAYS);
+
+    const credentials = {
+        username: username,
+        password: password,
+        expiry: expiry.toISOString()
+    };
+
+    localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
+}
+
+function checkCredentials() {
+    const credentials = getCredentials();
+    if (!credentials) {
+        showCredentialsModal();
+        return false;
+    }
+    return true;
+}
+
+function showCredentialsModal() {
+    const modal = document.getElementById('credentialsModal');
+    modal.style.display = 'flex';
+}
+
+function hideCredentialsModal() {
+    const modal = document.getElementById('credentialsModal');
+    modal.style.display = 'none';
+}
+
+// Tutorial Management
+let currentTutorialStep = 1;
+
+function showTutorial() {
+    document.getElementById('credentialsForm').style.display = 'none';
+    document.getElementById('tutorialSteps').style.display = 'block';
+    currentTutorialStep = 1;
+    updateTutorialStep();
+}
+
+function hideTutorial() {
+    document.getElementById('credentialsForm').style.display = 'block';
+    document.getElementById('tutorialSteps').style.display = 'none';
+}
+
+function updateTutorialStep() {
+    // Hide all steps
+    for (let i = 1; i <= 6; i++) {
+        const step = document.getElementById(`step${i}`);
+        if (step) step.style.display = 'none';
+    }
+
+    // Show current step
+    const currentStep = document.getElementById(`step${currentTutorialStep}`);
+    if (currentStep) currentStep.style.display = 'block';
+
+    // Update dots
+    const dots = document.querySelectorAll('.tutorial-dots .dot');
+    dots.forEach((dot, index) => {
+        if (index === currentTutorialStep - 1) {
+            dot.classList.add('active');
+        } else {
+            dot.classList.remove('active');
+        }
+    });
+
+    // Update buttons
+    const prevBtn = document.getElementById('tutorialPrevBtn');
+    const nextBtn = document.getElementById('tutorialNextBtn');
+
+    prevBtn.disabled = currentTutorialStep === 1;
+
+    if (currentTutorialStep === 6) {
+        nextBtn.textContent = 'Got it!';
+    } else {
+        nextBtn.innerHTML = `Next <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
+    }
+}
+
+function nextTutorialStep() {
+    if (currentTutorialStep < 6) {
+        currentTutorialStep++;
+        updateTutorialStep();
+    } else {
+        hideTutorial();
+    }
+}
+
+function prevTutorialStep() {
+    if (currentTutorialStep > 1) {
+        currentTutorialStep--;
+        updateTutorialStep();
+    }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
+    setupCredentialsListeners();
+    initializeMap();
+    setupLocationModeToggle();
+    setupRadiusSlider();
 });
 
 // Setup Event Listeners
@@ -58,28 +193,246 @@ function setupEventListeners() {
     nextPageBtn.addEventListener('click', () => changePage(currentPage + 1));
 }
 
+// Setup Credentials Modal Listeners
+function setupCredentialsListeners() {
+    const saveBtn = document.getElementById('saveCredentialsBtn');
+    const showTutorialBtn = document.getElementById('showTutorialBtn');
+    const backToFormBtn = document.getElementById('backToFormBtn');
+    const tutorialPrevBtn = document.getElementById('tutorialPrevBtn');
+    const tutorialNextBtn = document.getElementById('tutorialNextBtn');
+
+    saveBtn.addEventListener('click', () => {
+        const username = document.getElementById('decodUsername').value.trim();
+        const password = document.getElementById('decodPassword').value.trim();
+
+        if (!username || !password) {
+            alert('Please enter both username and password');
+            return;
+        }
+
+        saveCredentials(username, password);
+        hideCredentialsModal();
+
+        // Clear inputs
+        document.getElementById('decodUsername').value = '';
+        document.getElementById('decodPassword').value = '';
+    });
+
+    showTutorialBtn.addEventListener('click', showTutorial);
+    backToFormBtn.addEventListener('click', hideTutorial);
+    tutorialPrevBtn.addEventListener('click', prevTutorialStep);
+    tutorialNextBtn.addEventListener('click', nextTutorialStep);
+}
+
+// Initialize Leaflet Map
+function initializeMap() {
+    // Default location (Toronto)
+    const defaultLat = 43.6532;
+    const defaultLng = -79.3832;
+
+    // Create map without attribution control
+    map = L.map('map', {
+        attributionControl: false
+    }).setView([defaultLat, defaultLng], 11);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        minZoom: 3
+    }).addTo(map);
+
+    // Handle map clicks
+    map.on('click', function(e) {
+        setLocation(e.latlng.lat, e.latlng.lng);
+    });
+
+    // Try to get user's location
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                map.setView([lat, lng], 13);
+                setLocation(lat, lng);
+            },
+            function(error) {
+                console.log('Geolocation error:', error);
+                // Set default location if geolocation fails
+                setLocation(defaultLat, defaultLng);
+            }
+        );
+    } else {
+        // Set default location if geolocation not supported
+        setLocation(defaultLat, defaultLng);
+    }
+}
+
+// Set Location on Map
+function setLocation(lat, lng) {
+    selectedLocation = { lat, lng };
+
+    // Update hidden form inputs
+    document.getElementById('latitude').value = lat.toFixed(6);
+    document.getElementById('longitude').value = lng.toFixed(6);
+
+    // Remove existing marker if any
+    if (marker) {
+        map.removeLayer(marker);
+    }
+
+    // Add new marker
+    marker = L.marker([lat, lng], {
+        draggable: true,
+        title: 'Search Location'
+    }).addTo(map);
+
+    // Handle marker drag
+    marker.on('dragend', function(e) {
+        const pos = e.target.getLatLng();
+        setLocation(pos.lat, pos.lng);
+    });
+
+    // Update radius circle
+    updateRadiusCircle();
+
+    // Hide map instructions after first location set
+    const instructions = document.querySelector('.map-instructions');
+    if (instructions) {
+        instructions.style.opacity = '0';
+        setTimeout(() => {
+            instructions.style.display = 'none';
+        }, 300);
+    }
+}
+
+// Update Radius Circle on Map
+function updateRadiusCircle() {
+    if (!selectedLocation) return;
+
+    const radiusInput = document.getElementById('radius');
+    const radius = parseFloat(radiusInput.value);
+
+    // Remove existing circle if any
+    if (radiusCircle) {
+        map.removeLayer(radiusCircle);
+    }
+
+    // Add new circle
+    radiusCircle = L.circle([selectedLocation.lat, selectedLocation.lng], {
+        radius: radius * 1000, // Convert km to meters
+        color: '#4F46E5',
+        fillColor: '#4F46E5',
+        fillOpacity: 0.1,
+        weight: 2
+    }).addTo(map);
+
+    // Fit map to circle bounds
+    map.fitBounds(radiusCircle.getBounds(), {
+        padding: [50, 50],
+        maxZoom: 15
+    });
+}
+
+// Setup Location Mode Toggle
+function setupLocationModeToggle() {
+    const locationModeInputs = document.querySelectorAll('input[name="locationMode"]');
+    const mapModeSection = document.getElementById('mapModeSection');
+    const cityModeSection = document.getElementById('cityModeSection');
+
+    locationModeInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            if (this.value === 'map') {
+                // Show map mode
+                mapModeSection.style.display = 'block';
+                cityModeSection.style.display = 'none';
+
+                // Invalidate map size (Leaflet needs this after visibility change)
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 100);
+            } else {
+                // Show city mode
+                mapModeSection.style.display = 'none';
+                cityModeSection.style.display = 'block';
+            }
+        });
+    });
+}
+
+// Setup Radius Slider
+function setupRadiusSlider() {
+    const radiusInput = document.getElementById('radius');
+    const radiusValue = document.getElementById('radiusValue');
+
+    radiusInput.addEventListener('input', function() {
+        const value = parseFloat(this.value).toFixed(1);
+        radiusValue.textContent = value;
+        updateRadiusCircle();
+    });
+}
+
 // Handle Search Form Submit
 async function handleSearch(e) {
     e.preventDefault();
 
+    // Check credentials first
+    if (!checkCredentials()) {
+        return; // Modal will be shown automatically
+    }
+
+    // Get credentials
+    const credentials = getCredentials();
+
     // Get form data
     const formData = new FormData(searchForm);
+
+    // Determine which mode is active
+    const locationMode = document.querySelector('input[name="locationMode"]:checked').value;
+
+    // Store enrichment state
+    currentEnrichState = document.getElementById('enrich').checked;
+
     const data = {
         query: formData.get('query'),
-        city: formData.get('city'),
         limit: parseInt(formData.get('limit')),
-        country: formData.get('country') || null,
-        enrich: document.getElementById('enrich').checked
+        enrich: currentEnrichState
     };
 
+    // Add location-specific or city-specific fields
+    if (locationMode === 'map') {
+        // Location mode
+        const latitude = document.getElementById('latitude').value;
+        const longitude = document.getElementById('longitude').value;
+        const radius = document.getElementById('radius').value;
+
+        if (!latitude || !longitude) {
+            showError('Please select a location on the map');
+            return;
+        }
+
+        data.latitude = parseFloat(latitude);
+        data.longitude = parseFloat(longitude);
+        data.radius_km = parseFloat(radius);
+        data.city = ''; // Empty city for location mode
+    } else {
+        // City mode
+        data.city = formData.get('city');
+        data.country = formData.get('country') || null;
+    }
+
     // Validate
-    if (!data.query || !data.city) {
-        showError('Please fill in all required fields');
+    if (!data.query) {
+        showError('Please enter a business type');
         return;
     }
 
-    if (data.limit < 1 || data.limit > 500) {
-        showError('Limit must be between 1 and 500');
+    if (locationMode === 'city' && !data.city) {
+        showError('Please enter a city');
+        return;
+    }
+
+    if (data.limit < 1 || data.limit > 1000) {
+        showError('Limit must be between 1 and 1000');
         return;
     }
 
@@ -96,7 +449,9 @@ async function handleSearch(e) {
         const response = await fetch(`${API_BASE}/api/search`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-Decodo-Username': credentials.username,
+                'X-Decodo-Password': credentials.password
             },
             body: JSON.stringify(data)
         });
@@ -255,7 +610,7 @@ async function loadResults() {
             throw new Error('Invalid results response from server');
         }
 
-        displayResults(data.results);
+        displayResults(data.results, currentEnrichState);
 
         // Show results card, hide progress
         progressCard.style.display = 'none';
@@ -268,7 +623,7 @@ async function loadResults() {
 }
 
 // Display Results
-function displayResults(results) {
+function displayResults(results, enrichEnabled) {
     // Store all results
     allResults = results;
     currentPage = 1;
@@ -276,8 +631,29 @@ function displayResults(results) {
     // Update total count
     resultsCount.textContent = results.length;
 
+    // Show/hide columns based on enrichment
+    updateTableColumns(enrichEnabled);
+
     // Render first page
     renderPage();
+}
+
+// Update Table Columns Based on Enrichment
+function updateTableColumns(enrichEnabled) {
+    const table = document.getElementById('resultsTable');
+    const headers = table.querySelectorAll('thead th');
+    const emailIndex = 5; // Email column (0-indexed)
+    const websiteIndex = 6; // Website column (0-indexed)
+
+    if (enrichEnabled) {
+        // Show email and website columns
+        if (headers[emailIndex]) headers[emailIndex].style.display = '';
+        if (headers[websiteIndex]) headers[websiteIndex].style.display = '';
+    } else {
+        // Hide email and website columns
+        if (headers[emailIndex]) headers[emailIndex].style.display = 'none';
+        if (headers[websiteIndex]) headers[websiteIndex].style.display = 'none';
+    }
 }
 
 // Render Current Page
@@ -396,6 +772,10 @@ function createResultRow(business, index) {
     } else {
         emailCell.textContent = '-';
     }
+    // Hide if enrichment is disabled
+    if (!currentEnrichState) {
+        emailCell.style.display = 'none';
+    }
     row.appendChild(emailCell);
 
     // Website
@@ -404,6 +784,10 @@ function createResultRow(business, index) {
         websiteCell.innerHTML = `<a href="${escapeHtml(business.website)}" target="_blank" rel="noopener" class="link">Visit</a>`;
     } else {
         websiteCell.textContent = '-';
+    }
+    // Hide if enrichment is disabled
+    if (!currentEnrichState) {
+        websiteCell.style.display = 'none';
     }
     row.appendChild(websiteCell);
 
