@@ -34,4 +34,9 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest
+          pytest || exit_code=$?
+          if [ "${exit_code:-0}" = "5" ]; then
+            echo "pytest reported no tests; continuing."
+            exit 0
+          fi
+          exit ${exit_code:-0}
