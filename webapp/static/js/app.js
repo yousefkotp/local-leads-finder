@@ -200,6 +200,8 @@ function setupCredentialsListeners() {
     const backToFormBtn = document.getElementById('backToFormBtn');
     const tutorialPrevBtn = document.getElementById('tutorialPrevBtn');
     const tutorialNextBtn = document.getElementById('tutorialNextBtn');
+    const ctaTutorialLink = document.getElementById('ctaTutorialLink');
+    const closeModalBtn = document.getElementById('closeCredentialsModal');
 
     saveBtn.addEventListener('click', () => {
         const username = document.getElementById('decodUsername').value.trim();
@@ -217,6 +219,21 @@ function setupCredentialsListeners() {
         document.getElementById('decodUsername').value = '';
         document.getElementById('decodPassword').value = '';
     });
+
+    if (ctaTutorialLink) {
+        ctaTutorialLink.addEventListener('click', (event) => {
+            event.preventDefault();
+            showCredentialsModal();
+            showTutorial();
+        });
+    }
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            hideTutorial();
+            hideCredentialsModal();
+        });
+    }
 
     showTutorialBtn.addEventListener('click', showTutorial);
     backToFormBtn.addEventListener('click', hideTutorial);
