@@ -151,6 +151,41 @@ class ScraperAPISession:
             google_nfpr=google_nfpr,
         )
 
+    def google_maps_place_details(
+        self,
+        cid: str,
+        domain: str = "com",
+        locale: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Fetch a Google Maps place details page using the business CID.
+
+        Args:
+            cid: Google Maps CID identifier
+            domain: Google top-level domain (com, ca, co.uk, etc.)
+            locale: Optional locale string (e.g., en-US) used to set hl/gl params
+
+        Returns:
+            Raw HTML payload of the place details page
+        """
+        tld = domain or "com"
+        url = f"https://www.google.{tld}/maps?cid={cid}"
+
+        params = []
+        if locale:
+            params.append(f"hl={locale}")
+            parts = locale.split("-")
+            if len(parts) > 1:
+                params.append(f"gl={parts[-1]}")
+
+        if params:
+            url = f"{url}&{'&'.join(params)}"
+
+        return self.scrape(
+            target="google",
+            url=url,
+        )
+
     def google_search(
         self,
         query: str,

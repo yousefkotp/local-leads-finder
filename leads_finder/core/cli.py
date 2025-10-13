@@ -72,7 +72,12 @@ PROVIDERS = {
     default=None,
     help="Decodo password (or set DECODO_PASSWORD env var)",
 )
-def main(query: str, city: str, providers: str, limit: int, out: str, rps: float, country: str, username: str, password: str):
+@click.option(
+    "--enrich/--no-enrich",
+    default=True,
+    help="Fetch detailed contact info (phone, email, website) for each business (default: enabled)",
+)
+def main(query: str, city: str, providers: str, limit: int, out: str, rps: float, country: str, username: str, password: str, enrich: bool):
     """
     Local Leads Finder - Collect local business leads using Decodo Scraper API.
 
@@ -82,6 +87,7 @@ def main(query: str, city: str, providers: str, limit: int, out: str, rps: float
     print(f"🔍 Searching for '{query}' in {city}...")
     print(f"📍 Providers: {providers}")
     print(f"🎯 Limit: {limit} per provider")
+    print(f"📊 Enrichment: {'Enabled' if enrich else 'Disabled'}")
 
     # Parse providers
     provider_list = [p.strip().lower() for p in providers.split(",")]
@@ -114,7 +120,7 @@ def main(query: str, city: str, providers: str, limit: int, out: str, rps: float
         try:
             provider_class = PROVIDERS[provider_name]
             provider = provider_class(session)
-            businesses = provider.search(query, city, limit, country=country)
+            businesses = provider.search(query, city, limit, country=country, enrich=enrich)
             all_businesses.extend(businesses)
         except Exception as e:
             print(f"❌ Error with {provider_name}: {e}")
