@@ -1,5 +1,9 @@
 # Local Leads Finder
 
+![Local Leads Finder demo](./assets/demo.gif)
+
+<!-- [![PyPI](https://img.shields.io/pypi/v/leads-finder)](https://pypi.org/project/leads-finder/) -->
+
 **Fast, scalable local business lead generation powered by [Decodo](https://visit.decodo.com/RGrYdR) Web Scraping API.**
 
 Turn a simple keyword and location into a ready-to-use dataset of local businesses from Google Maps. Perfect for freelancers, agencies, and SMBs who need quality leads at scale.

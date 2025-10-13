@@ -19,7 +19,7 @@ import io
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from leads_finder.core.scraper_api_session import ScraperAPISession
+from leads_finder.core.scraper_api_session import ScraperAPISession, DecodoUnauthorizedError
 from leads_finder.core.dedupe import deduplicate_businesses
 from leads_finder.providers.google_maps import GoogleMapsProvider
 
@@ -188,7 +188,11 @@ def perform_search(search_id: str, query: str, city: str, limit: int, country: s
         progress.update("completed", 100, f"Found {len(unique_businesses)} unique businesses")
         progress.set_results(unique_businesses)
 
+    except DecodoUnauthorizedError as e:
+        progress.update(status="error", progress=100, message=str(e))
+        progress.set_error(f"AUTH_REQUIRED::{str(e)}")
     except Exception as e:
+        progress.update(status="error", progress=100, message=str(e))
         progress.set_error(str(e))
 
 

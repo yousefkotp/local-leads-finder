@@ -6,7 +6,7 @@ import sys
 import click
 from dotenv import load_dotenv
 
-from .scraper_api_session import ScraperAPISession
+from .scraper_api_session import ScraperAPISession, DecodoUnauthorizedError
 from .dedupe import deduplicate_businesses
 from .export import export_to_csv, export_to_json
 from ..providers.google_maps import GoogleMapsProvider
@@ -194,6 +194,11 @@ def main(
                 radius_km=radius_km if use_radius else None,
             )
             all_businesses.extend(businesses)
+        except DecodoUnauthorizedError as e:
+            print("❌ Decodo authentication failed.")
+            print(f"   {e}")
+            print("   Update your credentials with --username/--password or set DECODO_USERNAME and DECODO_PASSWORD.")
+            sys.exit(1)
         except Exception as e:
             print(f"❌ Error with {provider_name}: {e}")
             continue

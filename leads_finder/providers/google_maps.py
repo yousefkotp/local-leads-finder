@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional, Set, Callable
 
 from bs4 import BeautifulSoup
 
-from ..core.scraper_api_session import ScraperAPISession
+from ..core.scraper_api_session import ScraperAPISession, DecodoUnauthorizedError
 
 COUNTRY_SETTINGS = {
     "US": {"name": "United States", "locale": "en-US", "domain": "com"},
@@ -136,6 +136,8 @@ class GoogleMapsProvider:
 
             print(f"Google Maps: Found {len(businesses)} businesses")
 
+        except DecodoUnauthorizedError:
+            raise
         except Exception as e:
             print(f"Google Maps search error: {e}")
 

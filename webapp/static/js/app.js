@@ -1098,7 +1098,18 @@ function enableForm() {
 
 // Show Error
 function showError(message) {
-    alert(`Error: ${message}`);
+    let text = message || 'An unexpected error occurred.';
+    const authPrefix = 'AUTH_REQUIRED::';
+
+    if (typeof text === 'string' && text.startsWith(authPrefix)) {
+        text = text.slice(authPrefix.length).trim();
+        localStorage.removeItem(CREDENTIALS_KEY);
+        showCredentialsModal();
+        alert(`Authentication Error: ${text}`);
+        return;
+    }
+
+    alert(`Error: ${text}`);
 }
 
 // Format Status

@@ -8,6 +8,10 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 
+class DecodoUnauthorizedError(Exception):
+    """Raised when the Decodo API rejects supplied credentials."""
+
+
 class ScraperAPISession:
     """
     Session manager for Decodo Web Scraping API.
@@ -106,9 +110,34 @@ class ScraperAPISession:
                 timeout=(10, 60)  # Longer timeout for rendering
             )
 
+            if response.status_code == 401:
+                detail = ""
+                try:
+                    detail_json = response.json()
+                    detail = (
+                        detail_json.get("message")
+                        or detail_json.get("error")
+                        or detail_json.get("detail")
+                        or ""
+                    )
+                except ValueError:
+                    detail = response.text.strip()
+
+                message = (
+                    "Decodo API rejected the supplied credentials (HTTP 401 Unauthorized). "
+                    "Please update your username and password."
+                )
+                if detail:
+                    truncated = detail if len(detail) <= 200 else f"{detail[:197]}..."
+                    message = f"{message} Details: {truncated}"
+
+                raise DecodoUnauthorizedError(message)
+
             response.raise_for_status()
             return response.json()
 
+        except DecodoUnauthorizedError:
+            raise
         except requests.exceptions.RequestException as e:
             print(f"Scraper API request failed: {e}")
             if hasattr(e.response, 'text'):
