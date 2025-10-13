@@ -15,6 +15,13 @@ setup(
     author="Yousef Kotp",
     author_email="yousefkotp@outlook.com",
     url="https://github.com/yousefkotp/local-leads-finder",
+    project_urls={
+        "Documentation": "https://github.com/yousefkotp/local-leads-finder#readme",
+        "Source": "https://github.com/yousefkotp/local-leads-finder",
+        "Issue Tracker": "https://github.com/yousefkotp/local-leads-finder/issues",
+        "Releases": "https://github.com/yousefkotp/local-leads-finder/releases",
+        "PyPI": "https://pypi.org/project/leads-finder/",
+    },
     packages=find_packages(),
     install_requires=[
         "requests>=2.31.0",
