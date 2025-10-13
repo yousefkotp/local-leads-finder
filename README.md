@@ -7,6 +7,7 @@ Turn a simple keyword and city into a ready-to-use dataset of local businesses f
 ## Features
 
 - **Simple CLI**: One command to collect hundreds of local business leads
+- **Web Interface**: Modern, intuitive web dashboard with real-time progress tracking
 - **Google Maps**: Native Google Maps support with automatic parsing
 - **Clean output**: Deduplicated CSV with name, phone, website, rating, address
 - **Rate limiting**: Built-in request throttling
@@ -69,11 +70,50 @@ Google Maps Scraper API is working!
 
 ### 5. Start Collecting Leads
 
+**Option A: Web Interface (Recommended)**
+
+```bash
+cd webapp
+./run.sh
+```
+
+Then open your browser to `http://localhost:5000` for the beautiful web interface!
+
+**Option B: Command Line**
+
 ```bash
 leads-finder --query "dentist" --city "Toronto" --out leads.csv
 ```
 
 ## Usage
+
+### Web Interface
+
+The web interface provides a modern, user-friendly way to find leads:
+
+1. **Start the web server:**
+   ```bash
+   cd webapp
+   ./run.sh
+   ```
+
+2. **Open your browser** to `http://localhost:5000`
+
+3. **Fill in the search form:**
+   - Business Type (e.g., "dentist", "pizza restaurant")
+   - City (e.g., "Toronto", "New York")
+   - Results Limit (1-500)
+   - Country (optional)
+
+4. **Watch real-time progress** as leads are collected
+
+5. **View results** in an interactive table
+
+6. **Export to CSV or JSON** with one click
+
+See [webapp/README.md](webapp/README.md) for more details on the web interface.
+
+### Command Line Interface
 
 ### Basic Examples
 
@@ -204,11 +244,16 @@ local-leads-finder/
 │   │   └── parser.py                 # Data parsing utilities
 │   └── providers/
 │       └── google_maps.py            # Google Maps provider
+├── webapp/                           # Web interface
+│   ├── app.py                        # Flask backend
+│   ├── templates/                    # HTML templates
+│   ├── static/                       # CSS, JavaScript
+│   ├── run.sh                        # Startup script
+│   └── README.md                     # Web app docs
 ├── test_connection.py                # Connection test script
 ├── requirements.txt                  # Python dependencies
 ├── setup.py                          # Package installer
 ├── Dockerfile                        # Docker container
-├── SETUP.md                          # Detailed setup guide
 └── README.md                         # This file
 ```
 
@@ -220,9 +265,9 @@ local-leads-finder/
 - [ ] Business hours and amenities
 
 ### Phase 3: UI & Automation
-- [ ] Web dashboard
+- [x] Web dashboard
 - [ ] Scheduled scraping
-- [ ] API endpoint for integrations
+- [x] API endpoint for integrations
 
 ## Contributing
 
