@@ -12,9 +12,9 @@ setup(
     description="Local business leads finder using Decodo proxies",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author="Your Name",
-    author_email="your.email@example.com",
-    url="https://github.com/yourusername/local-leads-finder",
+    author="Yousef Kotp",
+    author_email="yousefkotp@outlook.com",
+    url="https://github.com/yousefkotp/local-leads-finder",
     packages=find_packages(),
     install_requires=[
         "requests>=2.31.0",
