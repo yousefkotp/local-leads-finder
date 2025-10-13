@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: local-leads-finder
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "cd webapp && gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1 --threads 2"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: FLASK_ENV
+        value: production
