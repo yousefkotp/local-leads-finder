@@ -89,7 +89,7 @@ class SearchProgress:
         if status:
             self.status = status
         if progress is not None:
-            self.progress = progress
+            self.progress = max(0, min(100, progress))
         if message:
             self.message = message
 
@@ -131,6 +131,33 @@ def perform_search(search_id: str, query: str, city: str, limit: int, country: s
         # Initialize provider
         provider = GoogleMapsProvider(session)
 
+        def report_collection_progress(collected: int, expected_total: int):
+            """Update progress bar as results stream in."""
+            if progress.completed:
+                return
+
+            target = expected_total or limit or 1
+            # Prevent division by zero and keep ratio within [0, 1]
+            ratio = min(max(collected / max(target, 1), 0.0), 1.0)
+
+            base_progress = 30
+            span = 40  # Allow dynamic updates up to ~70%
+            dynamic_progress = base_progress + int(ratio * span)
+
+            if collected > 0:
+                dynamic_progress = max(dynamic_progress, base_progress + 1)
+
+            # Keep room for processing / finalization stages
+            dynamic_progress = min(dynamic_progress, 69)
+
+            # Ensure we never move backwards
+            if dynamic_progress < progress.progress:
+                dynamic_progress = progress.progress
+
+            message = f"Collecting results... {collected} found"
+            progress.update(status="searching", progress=dynamic_progress, message=message)
+            progress.total_found = collected
+
         # Determine search type and message
         if latitude is not None and longitude is not None:
             location_str = f"({latitude:.4f}, {longitude:.4f})"
@@ -148,12 +175,13 @@ def perform_search(search_id: str, query: str, city: str, limit: int, country: s
             enrich=enrich,
             latitude=latitude,
             longitude=longitude,
-            radius_km=radius_km
+            radius_km=radius_km,
+            progress_callback=report_collection_progress
         )
         progress.total_found = len(businesses)
 
         # Deduplicate
-        progress.update("processing", 70, f"Processing {len(businesses)} results...")
+        progress.update("processing", 85, f"Processing {len(businesses)} results...")
         unique_businesses = deduplicate_businesses(businesses)
 
         # Complete

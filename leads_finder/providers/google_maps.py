@@ -3,7 +3,7 @@ from datetime import datetime
 import json
 import re
 from html import unescape
-from typing import Dict, Any, List, Optional, Set
+from typing import Dict, Any, List, Optional, Set, Callable
 
 from bs4 import BeautifulSoup
 
@@ -46,6 +46,7 @@ class GoogleMapsProvider:
         latitude: Optional[float] = None,
         longitude: Optional[float] = None,
         radius_km: Optional[float] = None,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Search for businesses on Google Maps.
@@ -121,6 +122,12 @@ class GoogleMapsProvider:
                     if parsed:
                         page_count += len(parsed)
                         businesses.extend(parsed)
+                        if progress_callback:
+                            try:
+                                progress_callback(len(businesses), limit)
+                            except Exception:
+                                # Progress updates should never interrupt scraping
+                                pass
 
                 if page_count == 0:
                     break
@@ -131,6 +138,12 @@ class GoogleMapsProvider:
 
         except Exception as e:
             print(f"Google Maps search error: {e}")
+
+        if progress_callback:
+            try:
+                progress_callback(len(businesses), limit)
+            except Exception:
+                pass
 
         return businesses
 
