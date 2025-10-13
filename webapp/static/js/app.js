@@ -700,11 +700,18 @@ async function handleSearch(e) {
         // Check if response is OK
         if (!response.ok) {
             let errorMessage = 'Failed to start search';
+            let isAuthError = false;
 
             // Try to parse error as JSON
             try {
                 const error = await response.json();
                 errorMessage = error.error || errorMessage;
+
+                // Check if this is an authentication error
+                if (response.status === 401 || error.auth_required) {
+                    isAuthError = true;
+                    errorMessage = 'AUTH_REQUIRED::' + errorMessage;
+                }
             } catch (jsonError) {
                 // If JSON parsing fails, try to get text
                 try {
@@ -717,6 +724,12 @@ async function handleSearch(e) {
                 } catch (textError) {
                     // If all else fails, use status text
                     errorMessage = `Server error: ${response.status} ${response.statusText}`;
+                }
+
+                // Check for 401 status
+                if (response.status === 401) {
+                    isAuthError = true;
+                    errorMessage = 'AUTH_REQUIRED::Invalid username or password. Please check your Decodo API credentials.';
                 }
             }
 
@@ -1105,11 +1118,98 @@ function showError(message) {
         text = text.slice(authPrefix.length).trim();
         localStorage.removeItem(CREDENTIALS_KEY);
         showCredentialsModal();
-        alert(`Authentication Error: ${text}`);
+        showAuthErrorInModal(text);
         return;
     }
 
-    alert(`Error: ${text}`);
+    showErrorAlert(text);
+}
+
+// Show authentication error in modal
+function showAuthErrorInModal(message) {
+    const modalBody = document.querySelector('#credentialsForm');
+
+    // Remove any existing error alert
+    const existingAlert = modalBody.querySelector('.auth-error-alert');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+
+    // Create error alert
+    const errorAlert = document.createElement('div');
+    errorAlert.className = 'auth-error-alert';
+    errorAlert.innerHTML = `
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/>
+        </svg>
+        <div class="auth-error-content">
+            <strong>Authentication Failed</strong>
+            <p>${escapeHtml(message)}</p>
+        </div>
+    `;
+
+    // Insert at the top of the form
+    modalBody.insertBefore(errorAlert, modalBody.firstChild);
+
+    // Add error state to input fields
+    const usernameInput = document.getElementById('decodUsername');
+    const passwordInput = document.getElementById('decodPassword');
+    if (usernameInput) usernameInput.classList.add('error');
+    if (passwordInput) passwordInput.classList.add('error');
+
+    // Remove error state when user starts typing
+    if (usernameInput) {
+        usernameInput.addEventListener('input', function removeError() {
+            usernameInput.classList.remove('error');
+            usernameInput.removeEventListener('input', removeError);
+        });
+    }
+    if (passwordInput) {
+        passwordInput.addEventListener('input', function removeError() {
+            passwordInput.classList.remove('error');
+            passwordInput.removeEventListener('input', removeError);
+        });
+    }
+
+    // Scroll error into view
+    errorAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Show error alert
+function showErrorAlert(message) {
+    // Create a styled alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'error-alert';
+    alertDiv.innerHTML = `
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/>
+        </svg>
+        <div class="error-content">
+            <strong>Error</strong>
+            <p>${escapeHtml(message)}</p>
+        </div>
+        <button class="error-close" onclick="this.parentElement.remove()">&times;</button>
+    `;
+
+    // Add to the page
+    const container = document.querySelector('.container');
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+        mainContent.insertBefore(alertDiv, mainContent.firstChild);
+    } else {
+        container.insertBefore(alertDiv, container.firstChild);
+    }
+
+    // Scroll into view
+    alertDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Auto-remove after 10 seconds
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.style.opacity = '0';
+            setTimeout(() => alertDiv.remove(), 300);
+        }
+    }, 10000);
 }
 
 // Format Status

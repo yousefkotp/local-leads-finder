@@ -189,8 +189,9 @@ def perform_search(search_id: str, query: str, city: str, limit: int, country: s
         progress.set_results(unique_businesses)
 
     except DecodoUnauthorizedError as e:
-        progress.update(status="error", progress=100, message=str(e))
-        progress.set_error(f"AUTH_REQUIRED::{str(e)}")
+        error_message = "Invalid username or password. Please check your Decodo API credentials and try again."
+        progress.update(status="error", progress=100, message=error_message)
+        progress.set_error(f"AUTH_REQUIRED::{error_message}")
     except Exception as e:
         progress.update(status="error", progress=100, message=str(e))
         progress.set_error(str(e))
@@ -214,7 +215,10 @@ def start_search():
     password = request.headers.get('X-Decodo-Password')
 
     if not username or not password:
-        return jsonify({'error': 'Missing API credentials. Please configure your Decodo credentials.'}), 401
+        return jsonify({
+            'error': 'Missing API credentials. Please configure your Decodo username and password.',
+            'auth_required': True
+        }), 401
 
     try:
         data = request.get_json()

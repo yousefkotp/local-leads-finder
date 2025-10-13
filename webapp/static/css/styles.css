@@ -1398,6 +1398,121 @@ body {
     transform: scale(1.2);
 }
 
+/* Error Alert Styles */
+.error-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    background: #FEF2F2;
+    border: 2px solid #FCA5A5;
+    border-left: 4px solid var(--danger);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-xl);
+    box-shadow: var(--shadow-md);
+    animation: slideIn 0.3s ease;
+    transition: opacity 0.3s ease;
+}
+
+.error-alert svg {
+    flex-shrink: 0;
+    color: var(--danger);
+    margin-top: 2px;
+}
+
+.error-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.error-content strong {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #991B1B;
+    margin-bottom: var(--spacing-xs);
+}
+
+.error-content p {
+    margin: 0;
+    color: #7F1D1D;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.error-close {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--danger);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+}
+
+.error-close:hover {
+    background: rgba(239, 68, 68, 0.1);
+    transform: scale(1.1);
+}
+
+/* Auth Error Alert (inside modal) */
+.auth-error-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    background: #FEF2F2;
+    border: 2px solid #FCA5A5;
+    border-left: 4px solid var(--danger);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-xl);
+    animation: slideIn 0.3s ease;
+}
+
+.auth-error-alert svg {
+    flex-shrink: 0;
+    color: var(--danger);
+    margin-top: 2px;
+}
+
+.auth-error-content {
+    flex: 1;
+}
+
+.auth-error-content strong {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #991B1B;
+    margin-bottom: var(--spacing-xs);
+}
+
+.auth-error-content p {
+    margin: 0;
+    color: #7F1D1D;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* Input Error States */
+.form-group input.error,
+.form-group select.error {
+    border-color: var(--danger);
+    background: #FEF2F2;
+}
+
+.form-group input.error:focus,
+.form-group select.error:focus {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
 /* Responsive Design for Map */
 @media (max-width: 768px) {
     .location-mode-toggle {
@@ -1444,5 +1559,14 @@ body {
         width: 100%;
         justify-content: center;
         margin-bottom: var(--spacing-md);
+    }
+
+    .error-alert {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .error-close {
+        align-self: flex-end;
     }
 }
