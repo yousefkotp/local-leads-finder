@@ -101,12 +101,40 @@ async function handleSearch(e) {
             body: JSON.stringify(data)
         });
 
+        // Check if response is OK
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to start search');
+            let errorMessage = 'Failed to start search';
+
+            // Try to parse error as JSON
+            try {
+                const error = await response.json();
+                errorMessage = error.error || errorMessage;
+            } catch (jsonError) {
+                // If JSON parsing fails, try to get text
+                try {
+                    const text = await response.text();
+                    if (text.includes('<')) {
+                        errorMessage = 'Server returned an HTML error page. Please check server logs.';
+                    } else {
+                        errorMessage = text || errorMessage;
+                    }
+                } catch (textError) {
+                    // If all else fails, use status text
+                    errorMessage = `Server error: ${response.status} ${response.statusText}`;
+                }
+            }
+
+            throw new Error(errorMessage);
         }
 
-        const result = await response.json();
+        // Parse successful response
+        let result;
+        try {
+            result = await response.json();
+        } catch (jsonError) {
+            throw new Error('Invalid response from server. Expected JSON but got something else.');
+        }
+
         currentSearchId = result.search_id;
 
         // Start polling for progress
@@ -158,7 +186,12 @@ async function checkProgress() {
         throw new Error('Failed to fetch progress');
     }
 
-    const progress = await response.json();
+    let progress;
+    try {
+        progress = await response.json();
+    } catch (jsonError) {
+        throw new Error('Invalid progress response from server');
+    }
 
     // Update progress UI
     updateProgress(progress);
@@ -215,7 +248,13 @@ async function loadResults() {
             throw new Error('Failed to load results');
         }
 
-        const data = await response.json();
+        let data;
+        try {
+            data = await response.json();
+        } catch (jsonError) {
+            throw new Error('Invalid results response from server');
+        }
+
         displayResults(data.results);
 
         // Show results card, hide progress

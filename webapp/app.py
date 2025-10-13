@@ -33,6 +33,44 @@ CORS(app)
 active_searches = {}
 
 
+# Error handlers to ensure all errors return JSON
+@app.errorhandler(400)
+def bad_request(error):
+    """Handle 400 Bad Request errors."""
+    return jsonify({'error': 'Bad Request', 'message': str(error)}), 400
+
+
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 Not Found errors."""
+    return jsonify({'error': 'Not Found', 'message': str(error)}), 404
+
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    """Handle 405 Method Not Allowed errors."""
+    return jsonify({'error': 'Method Not Allowed', 'message': str(error)}), 405
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 Internal Server errors."""
+    return jsonify({'error': 'Internal Server Error', 'message': 'An unexpected error occurred'}), 500
+
+
+@app.errorhandler(Exception)
+def handle_exception(error):
+    """Handle all uncaught exceptions."""
+    # Log the error for debugging
+    app.logger.error(f"Unhandled exception: {error}", exc_info=True)
+
+    # Return JSON error response
+    return jsonify({
+        'error': 'Internal Server Error',
+        'message': 'An unexpected error occurred. Please try again.'
+    }), 500
+
+
 class SearchProgress:
     """Track progress of a search operation."""
     def __init__(self, search_id: str):
@@ -119,14 +157,27 @@ def index():
 @app.route('/api/search', methods=['POST'])
 def start_search():
     """Start a new search operation."""
-    data = request.json
+    # Check if request has JSON data
+    if not request.is_json:
+        return jsonify({'error': 'Request must be JSON'}), 400
+
+    try:
+        data = request.get_json()
+    except Exception as e:
+        return jsonify({'error': f'Invalid JSON: {str(e)}'}), 400
+
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
 
     # Validate input
-    query = data.get('query', '').strip()
-    city = data.get('city', '').strip()
-    limit = int(data.get('limit', 100))
-    country = data.get('country', '').strip() or None
-    enrich = data.get('enrich', True)  # Default to True (enrichment enabled)
+    try:
+        query = (data.get('query') or '').strip()
+        city = (data.get('city') or '').strip()
+        limit = int(data.get('limit', 100))
+        country = (data.get('country') or '').strip() or None
+        enrich = data.get('enrich', True)  # Default to True (enrichment enabled)
+    except (ValueError, TypeError, AttributeError) as e:
+        return jsonify({'error': f'Invalid input data: {str(e)}'}), 400
 
     if not query or not city:
         return jsonify({'error': 'Query and city are required'}), 400
