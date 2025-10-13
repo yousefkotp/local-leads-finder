@@ -229,6 +229,8 @@ const COUNTRY_OPTIONS = [
     { code: 'ZW', name: 'Zimbabwe' }
 ];
 
+const REVEAL_SECTION_IDS = ['features', 'use-cases', 'insights'];
+
 // Map state
 let map = null;
 let marker = null;
@@ -400,6 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupLocationModeToggle();
     setupRadiusSlider();
     populateCountrySelect();
+    initializeSectionReveal();
 });
 
 // Setup Event Listeners
@@ -1160,4 +1163,75 @@ function populateCountrySelect() {
         option.textContent = `${name} (${code})`;
         countrySelect.appendChild(option);
     });
+}
+
+function initializeSectionReveal() {
+    const revealIds = new Set(REVEAL_SECTION_IDS);
+    const navLinks = document.querySelectorAll('.primary-nav a[href^="#"]');
+
+    revealIds.forEach(id => {
+        const section = document.getElementById(id);
+        if (section && section.dataset.revealed !== 'true') {
+            section.classList.add('is-hidden');
+            section.dataset.revealed = 'false';
+            section.setAttribute('aria-hidden', 'true');
+        }
+    });
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (event) => {
+            const href = link.getAttribute('href') || '';
+            const targetId = href.replace('#', '');
+            if (!targetId) {
+                return;
+            }
+
+            const section = document.getElementById(targetId);
+            if (section && revealIds.has(targetId)) {
+                event.preventDefault();
+                revealSection(section);
+                const newHash = `#${targetId}`;
+                if (window.location.hash !== newHash) {
+                    history.replaceState(null, '', newHash);
+                }
+                requestAnimationFrame(() => {
+                    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            }
+        });
+    });
+
+    const initialHash = (window.location.hash || '').replace('#', '');
+    if (revealIds.has(initialHash)) {
+        const initialSection = document.getElementById(initialHash);
+        if (initialSection) {
+            revealSection(initialSection);
+            requestAnimationFrame(() => {
+                initialSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
+    }
+
+    window.addEventListener('hashchange', () => {
+        const targetId = (window.location.hash || '').replace('#', '');
+        if (!revealIds.has(targetId)) {
+            return;
+        }
+        const section = document.getElementById(targetId);
+        if (section) {
+            revealSection(section);
+            requestAnimationFrame(() => {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
+    });
+}
+
+function revealSection(section) {
+    if (!section || section.dataset.revealed === 'true') {
+        return;
+    }
+    section.classList.remove('is-hidden');
+    section.dataset.revealed = 'true';
+    section.removeAttribute('aria-hidden');
 }

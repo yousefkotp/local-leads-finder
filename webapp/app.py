@@ -8,7 +8,7 @@ import json
 import time
 import threading
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, Response, send_file
+from flask import Flask, render_template, request, jsonify, Response, send_file, url_for
 from flask_cors import CORS
 from dotenv import load_dotenv
 from pathlib import Path
@@ -391,6 +391,50 @@ def health_check():
         'version': '1.0.0',
         'timestamp': datetime.utcnow().isoformat()
     })
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    """Serve robots.txt with sitemap reference."""
+    sitemap_url = url_for('sitemap_xml', _external=True)
+    content = "\n".join([
+        "User-agent: *",
+        "Allow: /",
+        f"Sitemap: {sitemap_url}"
+    ]) + "\n"
+    return Response(content, mimetype='text/plain')
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    """Serve a simple XML sitemap for search engines."""
+    base_urls = [
+        {
+            'loc': url_for('index', _external=True),
+            'changefreq': 'weekly',
+            'priority': '1.0'
+        }
+    ]
+
+    generated = datetime.utcnow().date().isoformat()
+    xml_parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    ]
+
+    for entry in base_urls:
+        xml_parts.extend([
+            '  <url>',
+            f"    <loc>{entry['loc']}</loc>",
+            f"    <lastmod>{generated}</lastmod>",
+            f"    <changefreq>{entry['changefreq']}</changefreq>",
+            f"    <priority>{entry['priority']}</priority>",
+            '  </url>'
+        ])
+
+    xml_parts.append('</urlset>')
+
+    return Response("\n".join(xml_parts), mimetype='application/xml')
 
 
 def find_free_port(start_port=5000, max_attempts=10):

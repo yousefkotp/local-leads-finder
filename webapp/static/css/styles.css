@@ -214,6 +214,10 @@ body {
     position: relative;
 }
 
+.seo-section.is-hidden {
+    display: none;
+}
+
 .feature-grid,
 .use-case-grid {
     display: grid;
