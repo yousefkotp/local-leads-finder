@@ -1,8 +1,14 @@
 # Local Leads Finder
 
-![Local Leads Finder demo](./assets/demo.gif)
+<p align="center">
+  <img src="./assets/demo.gif" alt="Local Leads Finder demo" width="720">
+</p>
 
-<!-- [![PyPI](https://img.shields.io/pypi/v/leads-finder)](https://pypi.org/project/leads-finder/) -->
+<!-- <p align="center">
+  <a href="https://pypi.org/project/leads-finder/">
+    <img src="https://img.shields.io/pypi/v/leads-finder" alt="PyPI version">
+  </a>
+</p> -->
 
 **Fast, scalable local business lead generation powered by [Decodo](https://visit.decodo.com/RGrYdR) Web Scraping API.**
 
