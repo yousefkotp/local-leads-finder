@@ -36,7 +36,7 @@ class GoogleMapsProvider:
         """
         self.session = session
 
-    def search(self, query: str, city: str, limit: int = 100, country: str = None) -> List[Dict[str, Any]]:
+    def search(self, query: str, city: str, limit: int = 100, country: str = None, enrich: bool = True) -> List[Dict[str, Any]]:
         """
         Search for businesses on Google Maps.
 
@@ -44,6 +44,8 @@ class GoogleMapsProvider:
             query: Search keyword (e.g., "dentist", "pizza")
             city: City name
             limit: Maximum number of results
+            country: Optional country code (e.g., "US", "CA")
+            enrich: If True, fetch additional contact details (phone, email, website) for each business
 
         Returns:
             List of business dictionaries
@@ -91,13 +93,14 @@ class GoogleMapsProvider:
                         break
 
                     parsed = self._parse_results_html(html, city, remaining, seen_ids)
-                    for business in parsed:
-                        self._enrich_business_details(
-                            business,
-                            domain=domain,
-                            locale=locale,
-                            cache=detail_cache,
-                        )
+                    if enrich:
+                        for business in parsed:
+                            self._enrich_business_details(
+                                business,
+                                domain=domain,
+                                locale=locale,
+                                cache=detail_cache,
+                            )
                     if parsed:
                         page_count += len(parsed)
                         businesses.extend(parsed)

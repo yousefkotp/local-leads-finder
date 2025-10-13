@@ -4,3 +4,5 @@ lxml>=4.9.0
 python-Levenshtein>=0.21.0
 python-dotenv>=1.0.0
 click>=8.1.0
+Flask>=3.0.0
+Flask-CORS>=4.0.0

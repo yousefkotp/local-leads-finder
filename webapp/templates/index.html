@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Leads Finder - Business Lead Generation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="32" height="32" rx="8" fill="#4F46E5"/>
+                        <path d="M16 8L20 12L16 16L12 12L16 8Z" fill="white"/>
+                        <path d="M16 16L20 20L16 24L12 20L16 16Z" fill="white" opacity="0.6"/>
+                    </svg>
+                    Local Leads Finder
+                </h1>
+                <p class="subtitle">Find local business leads with Google Maps</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Search Form -->
+            <div class="card search-card">
+                <h2 class="card-title">Search for Leads</h2>
+                <form id="searchForm" class="search-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="query">Business Type</label>
+                            <input
+                                type="text"
+                                id="query"
+                                name="query"
+                                placeholder="e.g., dentist, pizza restaurant, plumber"
+                                required
+                            >
+                            <small>What type of business are you looking for?</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="city">City</label>
+                            <input
+                                type="text"
+                                id="city"
+                                name="city"
+                                placeholder="e.g., Toronto, New York, London"
+                                required
+                            >
+                            <small>Target city for your search</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="limit">Results Limit</label>
+                            <input
+                                type="number"
+                                id="limit"
+                                name="limit"
+                                value="100"
+                                min="1"
+                                max="500"
+                                required
+                            >
+                            <small>Maximum number of leads (1-500)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="country">Country (Optional)</label>
+                            <select id="country" name="country">
+                                <option value="">Auto-detect</option>
+                                <option value="US">United States</option>
+                                <option value="CA">Canada</option>
+                                <option value="GB">United Kingdom</option>
+                                <option value="AU">Australia</option>
+                                <option value="NZ">New Zealand</option>
+                                <option value="IE">Ireland</option>
+                            </select>
+                            <small>Specify country for better results</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group-checkbox">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enrich" name="enrich" checked>
+                            <span class="checkbox-text">
+                                <strong>Enrich business information</strong>
+                                <small>Fetch detailed contact info (phone, email, website) for each business. This takes longer but provides more complete data.</small>
+                            </span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="searchBtn">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 17C13.4183 17 17 13.4183 17 9C17 4.58172 13.4183 1 9 1C4.58172 1 1 4.58172 1 9C1 13.4183 4.58172 17 9 17Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M19 19L14.65 14.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Search for Leads
+                    </button>
+                </form>
+            </div>
+
+            <!-- Progress Section -->
+            <div class="card progress-card" id="progressCard" style="display: none;">
+                <h2 class="card-title">Search Progress</h2>
+                <div class="progress-content">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <span class="progress-percentage" id="progressPercentage">0%</span>
+                    </div>
+                    <p class="progress-message" id="progressMessage">Initializing search...</p>
+                    <div class="progress-stats">
+                        <div class="stat">
+                            <span class="stat-label">Status</span>
+                            <span class="stat-value" id="statusValue">Starting</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Found</span>
+                            <span class="stat-value" id="foundValue">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Unique</span>
+                            <span class="stat-value" id="uniqueValue">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="card results-card" id="resultsCard" style="display: none;">
+                <div class="results-header">
+                    <h2 class="card-title">Results (<span id="resultsCount">0</span>)</h2>
+                    <div class="results-actions">
+                        <button class="btn btn-secondary" id="exportCsvBtn">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14 10V12.6667C14 13.0203 13.8595 13.3594 13.6095 13.6095C13.3594 13.8595 13.0203 14 12.6667 14H3.33333C2.97971 14 2.64057 13.8595 2.39052 13.6095C2.14048 13.3594 2 13.0203 2 12.6667V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M4.66699 6.66667L8.00033 10L11.3337 6.66667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M8 10V2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Export CSV
+                        </button>
+                        <button class="btn btn-secondary" id="exportJsonBtn">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14 10V12.6667C14 13.0203 13.8595 13.3594 13.6095 13.6095C13.3594 13.8595 13.0203 14 12.6667 14H3.33333C2.97971 14 2.64057 13.8595 2.39052 13.6095C2.14048 13.3594 2 13.0203 2 12.6667V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M4.66699 6.66667L8.00033 10L11.3337 6.66667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M8 10V2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Export JSON
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-controls">
+                    <div class="pagination-info">
+                        Showing <span id="pageStart">0</span>-<span id="pageEnd">0</span> of <span id="totalResults">0</span>
+                    </div>
+                    <div class="pagination-controls">
+                        <label for="pageSize">Per page:</label>
+                        <select id="pageSize">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="results-table" id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Rating</th>
+                                <th>Reviews</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Website</th>
+                                <th>Google Maps</th>
+                                <th>Address</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody">
+                            <!-- Results will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-footer">
+                    <button class="btn btn-secondary" id="prevPageBtn" disabled>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Previous
+                    </button>
+                    <span class="page-indicator">Page <span id="currentPage">1</span> of <span id="totalPages">1</span></span>
+                    <button class="btn btn-secondary" id="nextPageBtn" disabled>
+                        Next
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Powered by <a href="https://decodo.io" target="_blank">Decodo</a> Web Scraping API</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
