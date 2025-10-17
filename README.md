@@ -1,5 +1,14 @@
 # Local Leads Finder
 
+
+<p align="center">
+  <a href="https://visit.decodo.com/Bnvo4L">
+    <img src="assets/thumbnail_image.png" alt="Decodo Web Scraping API">
+  </a>
+</p>
+
+## Demo
+
 <p align="center">
   <img src="./assets/demo.gif" alt="Local Leads Finder demo" width="720">
 </p>
