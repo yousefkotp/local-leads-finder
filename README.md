@@ -10,7 +10,7 @@
   </a>
 </p> -->
 
-**Fast, scalable local business lead generation powered by [Decodo](https://visit.decodo.com/RGrYdR) Web Scraping API.**
+**Fast, scalable local business lead generation powered by [Decodo](https://visit.decodo.com/Bnvo4L) Web Scraping API.**
 
 Turn a simple keyword and location into a ready-to-use dataset of local businesses from Google Maps. Perfect for freelancers, agencies, and SMBs who need quality leads at scale.
 
@@ -62,7 +62,7 @@ pip install -e .
 
 #### Step 2: Get Decodo credentials
 
-Get your Scraper API credentials from [Decodo Dashboard](https://visit.decodo.com/RGrYdR):
+Get your Scraper API credentials from [Decodo Dashboard](https://visit.decodo.com/Bnvo4L):
 
 1. Navigate to **"Scraper"** tab
 2. Find your **username** and **password**
